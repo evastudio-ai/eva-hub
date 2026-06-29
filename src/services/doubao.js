@@ -20,6 +20,11 @@ function normalizeCopyType(value) {
   return copyTypeAlias[copyType] || copyType || '朋友圈日常';
 }
 
+function normalizeContentFocus(value) {
+  const contentFocus = String(value || '讲衣服').trim();
+  return ['讲衣服', '讲搭配', '讲氛围', '讲感悟'].includes(contentFocus) ? contentFocus : '讲衣服';
+}
+
 function normalizeApiKey(value) {
   return String(value || '')
     .trim()
@@ -76,6 +81,17 @@ function buildEVAPrompt(formData) {
 
   const normalizedStyle = normalizeCopyType(formData.style || formData.copyType);
   const targetStyle = styleGuides[normalizedStyle] || styleGuides['朋友圈日常'] || styleGuides['高级质感'];
+  const contentFocus = normalizeContentFocus(formData.contentFocus);
+  const contentFocusGuides = {
+    讲衣服:
+      '【讲衣服】：重点讲款式、版型、面料、颜色、设计亮点、适合人群、适合场景。可以适度讲商品信息，但不能直播叫卖。',
+    讲搭配:
+      '【讲搭配】：重点讲整套 look 的搭配逻辑，包括上下装关系、鞋包配饰、风格平衡、适合场合。如果图片里能看到配饰，可以结合；不确定的信息不要乱猜。',
+    讲氛围:
+      '【讲氛围】：重点讲场景、光线、天气、空间、情绪、松弛感和生活方式。不要详细介绍衣服，不要拆解版型材质，只把衣服作为画面和状态的一部分。',
+    讲感悟:
+      '【讲感悟】：重点讲主理人视角、女性状态、生活态度、审美判断、EVA 的品牌价值观。不要详细介绍衣服，不要拆解版型材质，只把衣服作为画面和状态的一部分。',
+  };
 
   const angles = ['今天的天气', '一个生活瞬间', '一句感悟', '买手心得', '城市生活', '光影', '穿搭体验', '客户故事', '店内日常'];
   const randomAngle = angles[Math.floor(Math.random() * angles.length)];
@@ -108,6 +124,11 @@ function buildEVAPrompt(formData) {
 
 【本次文案类型】
 ${targetStyle}
+
+【本次内容重心】
+${contentFocusGuides[contentFocus] || contentFocusGuides['讲衣服']}
+
+注意：“内容重心”决定这条朋友圈主要写什么；“文案类型”决定这条朋友圈怎么写。两者必须同时遵守。
 
 【输出格式强制要求】
 必须且只能输出一段纯净的 JSON 格式数据。不要有任何多余的解释、代码块标记（如 \`\`\`json ）。保证 JSON.parse() 可直接解析。

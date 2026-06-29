@@ -11,6 +11,7 @@ const initialForm = {
   scene: '',
   activity: '',
   copyType: '朋友圈日常版',
+  contentFocus: '讲衣服',
   apiKey: '',
 };
 
@@ -24,6 +25,8 @@ const copyTypes = [
   '搭配推荐版',
   '小红书种草版',
 ];
+
+const contentFocusOptions = ['讲衣服', '讲搭配', '讲氛围', '讲感悟'];
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -267,6 +270,14 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
               <select value={form.copyType} onChange={(event) => updateField('copyType', event.target.value)}>
                 {copyTypes.map((copyType) => (
                   <option key={copyType}>{copyType}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              内容重心
+              <select value={form.contentFocus} onChange={(event) => updateField('contentFocus', event.target.value)}>
+                {contentFocusOptions.map((contentFocus) => (
+                  <option key={contentFocus}>{contentFocus}</option>
                 ))}
               </select>
             </label>
