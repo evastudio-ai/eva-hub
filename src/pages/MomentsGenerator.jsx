@@ -10,10 +10,19 @@ const initialForm = {
   price: '',
   scene: '',
   activity: '',
-  style: '高级质感',
+  copyType: '朋友圈日常版',
   modelId: '',
   apiKey: '',
 };
+
+const copyTypes = [
+  '朋友圈日常版',
+  '高级质感版',
+  '老客私域版',
+  '新品推荐版',
+  '搭配推荐版',
+  '小红书种草版',
+];
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -29,7 +38,7 @@ function MomentsGenerator() {
   const [form, setForm] = useState(initialForm);
   const [preview, setPreview] = useState('');
   const [imageDataUrl, setImageDataUrl] = useState('');
-  const [isMockMode, setIsMockMode] = useState(true);
+  const [isMockMode, setIsMockMode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [copyState, setCopyState] = useState('');
@@ -146,7 +155,7 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
           <p className="eyebrow">Moments Generator</p>
           <h1>AI朋友圈生成器</h1>
           <p className="hero-copy">
-            {isMockMode ? '当前为 Mock 测试模式，可切换为豆包视觉接入测试。' : '当前为豆包视觉接入测试版。'}
+            {isMockMode ? '当前为 Mock 测试模式。' : '当前默认使用豆包视觉模型，会根据图片和文案类型生成。'}
           </p>
         </div>
       </header>
@@ -216,12 +225,11 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
 
           <div className="field-grid">
             <label>
-              文案风格
-              <select value={form.style} onChange={(event) => updateField('style', event.target.value)}>
-                <option>高级质感</option>
-                <option>轻松日常</option>
-                <option>种草推荐</option>
-                <option>温柔治愈</option>
+              文案类型
+              <select value={form.copyType} onChange={(event) => updateField('copyType', event.target.value)}>
+                {copyTypes.map((copyType) => (
+                  <option key={copyType}>{copyType}</option>
+                ))}
               </select>
             </label>
             <label>
