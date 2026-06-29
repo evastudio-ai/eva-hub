@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateMomentsMock } from '../services/doubao.js';
+import { generateMomentsMock, generateMomentsWithDoubao } from '../services/doubao.js';
 
 const initialForm = {
   brand: '',
@@ -11,15 +11,29 @@ const initialForm = {
   scene: '',
   activity: '',
   style: '高级质感',
+  modelId: '',
   apiKey: '',
 };
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('图片读取失败，请重新上传。'));
+    reader.readAsDataURL(file);
+  });
+}
 
 function MomentsGenerator() {
   const navigate = useNavigate();
   const [form, setForm] = useState(initialForm);
   const [preview, setPreview] = useState('');
+  const [imageDataUrl, setImageDataUrl] = useState('');
+  const [isMockMode, setIsMockMode] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState(null);
   const [copyState, setCopyState] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     return () => {
@@ -45,7 +59,7 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
     setForm((current) => ({ ...current, [field]: value }));
   };
 
-  const handleFile = (event) => {
+  const handleFile = async (event) => {
     const image = event.target.files?.[0];
     if (!image) {
       return;
@@ -56,11 +70,32 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
     }
 
     setPreview(URL.createObjectURL(image));
+    setErrorMessage('');
+
+    try {
+      setImageDataUrl(await fileToDataUrl(image));
+    } catch (error) {
+      setImageDataUrl('');
+      setErrorMessage(error.message);
+    }
   };
 
-  const handleGenerate = () => {
-    setResult(generateMomentsMock(form));
+  const handleGenerate = async () => {
     setCopyState('');
+    setErrorMessage('');
+    setIsGenerating(true);
+
+    try {
+      const nextResult = isMockMode
+        ? generateMomentsMock(form)
+        : await generateMomentsWithDoubao({ form, imageDataUrl });
+      setResult(nextResult);
+    } catch (error) {
+      setResult(null);
+      setErrorMessage(error.message || '生成失败，请检查 API Key、Model ID 和网络连接。');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const fallbackCopy = (text) => {
@@ -110,12 +145,26 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
         <div>
           <p className="eyebrow">Moments Generator</p>
           <h1>AI朋友圈生成器</h1>
-          <p className="hero-copy">当前为测试模式，豆包接口待接入</p>
+          <p className="hero-copy">
+            {isMockMode ? '当前为 Mock 测试模式，可切换为豆包视觉接入测试。' : '当前为豆包视觉接入测试版。'}
+          </p>
         </div>
       </header>
 
       <section className="generator-layout">
         <form className="generator-form" onSubmit={(event) => event.preventDefault()}>
+          <label className="mode-switch">
+            <input
+              checked={isMockMode}
+              type="checkbox"
+              onChange={(event) => {
+                setIsMockMode(event.target.checked);
+                setErrorMessage('');
+              }}
+            />
+            <span>Mock 模式</span>
+          </label>
+
           <label className="file-upload">
             <span>上传图片</span>
             <input accept="image/*" type="file" onChange={handleFile} />
@@ -176,6 +225,10 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
               </select>
             </label>
             <label>
+              Model ID
+              <input value={form.modelId} onChange={(event) => updateField('modelId', event.target.value)} />
+            </label>
+            <label>
               豆包 API Key
               <input
                 type="password"
@@ -185,8 +238,10 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
             </label>
           </div>
 
-          <button className="primary-button" type="button" onClick={handleGenerate}>
-            生成朋友圈文案
+          {errorMessage && <p className="error-message">{errorMessage}</p>}
+
+          <button className="primary-button" type="button" onClick={handleGenerate} disabled={isGenerating}>
+            {isGenerating ? '生成中...' : '生成朋友圈文案'}
           </button>
         </form>
 
