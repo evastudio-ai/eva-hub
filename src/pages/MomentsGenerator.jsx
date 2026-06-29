@@ -11,9 +11,10 @@ const initialForm = {
   scene: '',
   activity: '',
   copyType: '朋友圈日常版',
-  modelId: '',
   apiKey: '',
 };
+
+const API_KEY_STORAGE_KEY = 'eva-hub-doubao-api-key';
 
 const copyTypes = [
   '朋友圈日常版',
@@ -33,9 +34,20 @@ function fileToDataUrl(file) {
   });
 }
 
+function getStoredApiKey() {
+  try {
+    return window.localStorage.getItem(API_KEY_STORAGE_KEY) || '';
+  } catch (error) {
+    return '';
+  }
+}
+
 function MomentsGenerator() {
   const navigate = useNavigate();
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(() => ({
+    ...initialForm,
+    apiKey: getStoredApiKey(),
+  }));
   const [preview, setPreview] = useState('');
   const [imageDataUrl, setImageDataUrl] = useState('');
   const [isMockMode, setIsMockMode] = useState(false);
@@ -52,6 +64,20 @@ function MomentsGenerator() {
     };
   }, [preview]);
 
+  useEffect(() => {
+    try {
+      const apiKey = form.apiKey.trim();
+
+      if (apiKey) {
+        window.localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
+      } else {
+        window.localStorage.removeItem(API_KEY_STORAGE_KEY);
+      }
+    } catch (error) {
+      // localStorage may be unavailable in private browsing or restricted contexts.
+    }
+  }, [form.apiKey]);
+
   const resultText = useMemo(() => {
     if (!result) {
       return '';
@@ -66,6 +92,18 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleClearApiKey = () => {
+    updateField('apiKey', '');
+    setErrorMessage('');
+    setCopyState('');
+
+    try {
+      window.localStorage.removeItem(API_KEY_STORAGE_KEY);
+    } catch (error) {
+      // localStorage may be unavailable in private browsing or restricted contexts.
+    }
   };
 
   const handleFile = async (event) => {
@@ -101,7 +139,7 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
       setResult(nextResult);
     } catch (error) {
       setResult(null);
-      setErrorMessage(error.message || '生成失败，请检查 API Key、Model ID 和网络连接。');
+      setErrorMessage(error.message || '生成失败，请检查 API Key 和网络连接。');
     } finally {
       setIsGenerating(false);
     }
@@ -233,10 +271,6 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
               </select>
             </label>
             <label>
-              Model ID
-              <input value={form.modelId} onChange={(event) => updateField('modelId', event.target.value)} />
-            </label>
-            <label>
               豆包 API Key
               <input
                 type="password"
@@ -245,6 +279,12 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
               />
             </label>
           </div>
+
+          {form.apiKey && (
+            <button className="ghost-button" type="button" onClick={handleClearApiKey}>
+              清除 API Key
+            </button>
+          )}
 
           {errorMessage && <p className="error-message">{errorMessage}</p>}
 

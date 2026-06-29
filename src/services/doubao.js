@@ -1,131 +1,23 @@
-export function generateMomentsMock(data) {
-  const brand = data.brand || 'EVA STUDIO';
-  const category = data.category || '精选好物';
-  const color = data.color || '经典配色';
-  const material = data.material || '细腻材质';
-  const price = data.price || '到店咨询';
-  const scene = data.scene || '日常通勤、聚会和送礼';
-  const activity = data.activity || '欢迎到店体验';
-  const copyType = data.copyType || '朋友圈日常版';
+/**
+ * src/services/doubao.js
+ * Doubao Vision API and EVA Prompt Engine (EPE)
+ */
 
-  const copyTypeOpening = {
-    朋友圈日常版: '今天店里看到这件，属于不用很用力也能穿出状态的类型。',
-    高级质感版: '这件的质感是安静的，不靠夸张设计抢注意力，但细节很经得起看。',
-    老客私域版: '给熟悉 EVA STUDIO 风格的朋友留意一下，这件很适合日常衣橱补位。',
-    新品推荐版: '新到的一件单品，保留了设计师品牌的轮廓感，也足够适合日常穿着。',
-    搭配推荐版: '如果最近想做一套都市通勤感搭配，这件可以作为很稳的视觉重点。',
-    小红书种草版: '分享一件最近很喜欢的单品，整体是小众、松弛、但有精致感的方向。',
-  };
+const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
+const MODEL_ID = 'ep-20260624154859-k5tdh';
 
-  return {
-    status: 'mock',
-    title: `${brand}${category}${copyType}`,
-    body: `${copyTypeOpening[copyType] || copyTypeOpening['朋友圈日常版']}
-
-${color}搭配${material}，整体干净、耐看，适合${scene}。价格信息：${price}。
-
-${activity}
-
-喜欢这种小众、有质感、带一点都市松弛感的设计师品牌风格，可以来 EVA STUDIO 现场看看实物。`,
-    tags: ['EVA STUDIO', brand, category, copyType].filter(Boolean),
-  };
-}
-
-const copyTypeGuide = {
-  朋友圈日常版: '语气像店主日常分享，亲近、自然、不过度销售，适合朋友圈轻发布。',
-  高级质感版: '突出材质、轮廓、色彩和审美克制，语言更安静、更有画面感。',
-  老客私域版: '像发给熟悉品牌的老客，强调适合谁、为什么值得试，不要陌生人广告感。',
-  新品推荐版: '明确这是新品或新到款，突出新鲜感和到店体验，但不要促销叫卖。',
-  搭配推荐版: '重点给出穿搭思路，说明它可以和哪些风格、场景、单品组合。',
-  小红书种草版: '保留小红书的分享感和审美描述，但避免网红词和夸张营销。',
+const copyTypeAlias = {
+  朋友圈日常版: '朋友圈日常',
+  高级质感版: '高级质感',
+  老客私域版: '老客私域',
+  新品推荐版: '新品推荐',
+  搭配推荐版: '搭配推荐',
+  小红书种草版: '小红书风格',
 };
 
-function buildPrompt(data) {
-  const copyType = data.copyType || '朋友圈日常版';
-
-  return `你是 EVA STUDIO 的内容主理人，请先识别上传图片中的商品，再结合用户填写的信息，生成一条可直接发布的中文内容。
-
-任务目标：
-为 EVA STUDIO 生成 ${copyType} 的朋友圈文案。
-
-你必须同时参考：
-1. 图片内容：识别商品类型、颜色、材质、版型、风格、细节、适合场景。
-2. 用户填写的商品字段：如果用户填写了信息，优先使用并融合；如果没有填写，也要尽量根据图片生成。
-3. 用户选择的文案类型：${copyType}。
-4. EVA STUDIO 品牌调性：小众、时尚、有质感、都市通勤、松弛感、设计师品牌。
-
-用户填写的信息：
-品牌：${data.brand || 'EVA STUDIO'}
-品类：${data.category || '未填写'}
-颜色：${data.color || '未填写'}
-材质：${data.material || '未填写'}
-价格：${data.price || '未填写'}
-适合场景：${data.scene || '都市通勤、日常搭配'}
-活动信息：${data.activity || '无'}
-文案类型：${copyType}
-
-文案类型写法要求：
-${copyTypeGuide[copyType] || copyTypeGuide['朋友圈日常版']}
-
-品牌语言边界：
-- 要小众、时尚、有质感、都市通勤、松弛感、设计师品牌。
-- 不要直播叫卖感。
-- 不要夸张营销词。
-- 不要出现“闭眼入”“冲”“爆款”“太绝了”等网红词。
-- 不要编造无法从图片或用户字段判断的品牌、材质、价格、折扣。
-- 如果图片可见细节较少，用“看起来”“更偏向”这类谨慎表达。
-
-内容差异要求：
-不同文案类型必须有明显不同的表达重点和语气。请不要套模板，也不要重复用户字段。
-
-请只按以下结构输出，不要添加额外解释：
-标题：一句吸引人的标题
-朋友圈正文：适合直接发布，2-4 小段，语气自然、有审美、不夸张
-标签：3-6 个中文标签，用 # 开头`;
-}
-
-function normalizeTags(tagsText) {
-  if (!tagsText) {
-    return ['EVA STUDIO', '设计师品牌', '都市通勤'];
-  }
-
-  return tagsText
-    .split(/[\s,，、]+/)
-    .map((tag) => tag.trim())
-    .filter(Boolean)
-    .map((tag) => tag.replace(/^#/, ''))
-    .slice(0, 8);
-}
-
-function parseMomentsText(content) {
-  const text = String(content || '').trim();
-  const titleMatch = text.match(/标题[:：]\s*([\s\S]*?)(?=\n\s*(朋友圈正文|正文)[:：]|$)/);
-  const bodyMatch = text.match(/(?:朋友圈正文|正文)[:：]\s*([\s\S]*?)(?=\n\s*标签[:：]|$)/);
-  const tagsMatch = text.match(/标签[:：]\s*([\s\S]*)$/);
-
-  return {
-    status: 'live',
-    title: titleMatch?.[1]?.trim() || 'EVA STUDIO 朋友圈文案',
-    body: bodyMatch?.[1]?.trim() || text,
-    tags: normalizeTags(tagsMatch?.[1]),
-    raw: text,
-  };
-}
-
-async function readErrorMessage(response) {
-  const fallback = `请求失败：${response.status} ${response.statusText}`;
-
-  try {
-    const data = await response.json();
-    return data?.error?.message || data?.message || fallback;
-  } catch (error) {
-    try {
-      const text = await response.text();
-      return text || fallback;
-    } catch (textError) {
-      return fallback;
-    }
-  }
+function normalizeCopyType(value) {
+  const copyType = String(value || '朋友圈日常版').trim();
+  return copyTypeAlias[copyType] || copyType || '朋友圈日常';
 }
 
 function normalizeApiKey(value) {
@@ -145,62 +37,218 @@ function assertHeaderSafe(value) {
   }
 }
 
-export async function generateMomentsWithDoubao({ form, imageDataUrl }) {
-  const apiKey = normalizeApiKey(form.apiKey);
-  const modelId = form.modelId?.trim();
-
-  if (!apiKey) {
-    throw new Error('请先输入豆包 API Key。');
+function normalizeTags(tags) {
+  if (!Array.isArray(tags)) {
+    return [];
   }
 
-  if (!modelId) {
-    throw new Error('请先输入 Model ID。');
+  return tags.map((tag) => String(tag || '').replace(/^#/, '').trim()).filter(Boolean);
+}
+
+/**
+ * Core engine: EVA Prompt Engine (EPE) V1.4
+ * Design goal: unified brand language, temperament, and values.
+ *
+ * @param {Object} formData
+ * @returns {String}
+ */
+function buildEVAPrompt(formData) {
+  const infoList = [];
+  if (formData.brand) infoList.push(`品牌：${formData.brand}`);
+  if (formData.category) infoList.push(`品类：${formData.category}`);
+  if (formData.color) infoList.push(`颜色：${formData.color}`);
+  if (formData.material) infoList.push(`材质：${formData.material}`);
+  if (formData.price) infoList.push(`价格：${formData.price}`);
+  if (formData.scene) infoList.push(`适合场景：${formData.scene}`);
+  if (formData.activity) infoList.push(`当前动态/活动：${formData.activity}`);
+
+  const productInfo = infoList.length > 0 ? infoList.join(' | ') : '暂无特定补充信息。';
+
+  const styleGuides = {
+    朋友圈日常: '【朋友圈日常版】：像老板分享生活。真实、自然、不推销。字里行间流露着松弛感。',
+    高级质感: '【高级质感版】：像品牌画册。克制、留白、文字少、画面感极强。',
+    老客私域:
+      '【老客私域版】：像发给熟客看的微信。有温度。可以轻描淡写地提及“到店试穿”、“留了尺码”、“最近想到你”，但绝不硬性销售。',
+    新品推荐: '【新品推荐版】：站在专业买手角度，分析为什么值得买、适合谁、适合什么场景。不要罗列参数，要讲体验。',
+    搭配推荐: '【搭配推荐版】：重点写搭配逻辑，提升穿搭灵感。建议这件衣服适合配什么鞋、什么包、出席什么场景。',
+    小红书风格: '【小红书种草版】：可以稍微活泼一点，但仍必须保持 EVA STUDIO 品牌调性，绝不变成廉价网红账号。',
+  };
+
+  const normalizedStyle = normalizeCopyType(formData.style || formData.copyType);
+  const targetStyle = styleGuides[normalizedStyle] || styleGuides['朋友圈日常'] || styleGuides['高级质感'];
+
+  const angles = ['今天的天气', '一个生活瞬间', '一句感悟', '买手心得', '城市生活', '光影', '穿搭体验', '客户故事', '店内日常'];
+  const randomAngle = angles[Math.floor(Math.random() * angles.length)];
+
+  return `
+你是 EVA STUDIO 主理人。
+品牌背景：无锡本地十年买手店，中高端女性买手品牌（主营 AVVENN、UOOYAA、SHANGYI BY SHANGYI 等）。
+你的客群：25~45岁女性，企业主、白领、自由职业者，老客户占比较高，重视生活品质。
+品牌气质：小众、有质感、都市通勤、松弛感、留白、高级但克制。不追求流量表达。
+
+【工作流程】（必须严格执行）
+第一步（静默分析）：仔细观察图片，识别商品主体、主色调、穿搭风格、情绪氛围、光线与场景。如果材质等信息无法从图片确定，绝对禁止猜测。
+第二步（结合生成）：结合图片分析结果、下方商品信息、品牌调性以及指定的【随机切入视角】，生成文案。
+注意：请在后台静默完成第一步，不要输出任何分析过程，只输出最终要求的 JSON。
+
+商品及动态信息：${productInfo}
+本次随机切入视角：从【${randomAngle}】切入。
+
+【文案核心原则】
+不要介绍衣服本身，而是介绍“穿着这件衣服以后，这个人的状态”。
+让客户看到一种生活方式，而不是一件商品。
+例如：不要说“这件衬衫很好看”，而是写“有些衣服，不是为了让别人注意，而是让自己舒服一点”。
+
+【品牌语言库】
+鼓励使用的词汇：舒服、松弛、自在、刚刚好、留白、生活、陪伴、光影、城市、慢下来、有分寸、日常、自然、质感、安静、平衡。
+避免反复使用（太套路）：高级、设计感、精致、轻奢。
+
+【绝对禁止词汇（永久规则）】
+闭眼入、冲、爆款、太绝了、拿捏、姐妹们、买它、狠狠爱了、谁懂啊、YYDS、神仙单品、种草神器、赶紧下单。禁止一切直播间语气、夸张营销、制造焦虑或廉价网红表达。
+
+【本次文案类型】
+${targetStyle}
+
+【输出格式强制要求】
+必须且只能输出一段纯净的 JSON 格式数据。不要有任何多余的解释、代码块标记（如 \`\`\`json ）。保证 JSON.parse() 可直接解析。
+数据结构：
+{
+  "title": "文案标题（一句话提炼，克制有诗意）",
+  "text": "朋友圈正文内容（合理分段，有呼吸感，可极少量使用基础 Emoji，切忌花哨）",
+  "tags": ["#EVASTUDIO", "#适合你的标签"]
+}
+  `.trim();
+}
+
+function parseContent(content) {
+  try {
+    const parsedData = JSON.parse(content);
+    return {
+      title: parsedData.title || '生活瞬间',
+      text: parsedData.text || '',
+      tags: Array.isArray(parsedData.tags) ? parsedData.tags : [],
+      isMock: false,
+    };
+  } catch (error) {
+    return {
+      title: '生活瞬间',
+      text: content,
+      tags: [],
+      isMock: false,
+    };
+  }
+}
+
+function buildMockContent() {
+  return {
+    title: '一杯咖啡的留白时间',
+    text:
+      '有些衣服，不是为了让别人注意，而是让自己舒服一点。\n\n早秋的微凉里，面料的触感代替了语言，包裹着城市的喧嚣。在这个被填满的周五下午，给自己一点恰到好处的分寸感。☕️',
+    tags: ['#EVASTUDIO', '#城市通勤', '#松弛感'],
+    isMock: true,
+  };
+}
+
+/**
+ * Generate EVA moments content through Doubao Vision API.
+ *
+ * @param {Object} params
+ */
+export async function generateMomentsContent({ apiKey, imageBase64, formData }) {
+  const normalizedApiKey = normalizeApiKey(apiKey);
+  const trimmedModelId = MODEL_ID.trim();
+
+  if (!normalizedApiKey || normalizedApiKey === 'mock') {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(buildMockContent());
+      }, 1000);
+    });
   }
 
-  if (!imageDataUrl) {
+  if (!trimmedModelId) {
+    throw new Error('请输入 Model ID');
+  }
+
+  if (!imageBase64) {
     throw new Error('请先上传一张图片。');
   }
 
-  assertHeaderSafe(apiKey);
+  assertHeaderSafe(normalizedApiKey);
 
-  const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: modelId,
+  try {
+    const requestBody = {
+      model: trimmedModelId,
       messages: [
         {
           role: 'user',
           content: [
             {
-              type: 'image_url',
-              image_url: {
-                url: imageDataUrl,
-              },
+              type: 'text',
+              text: buildEVAPrompt(formData),
             },
             {
-              type: 'text',
-              text: buildPrompt(form),
+              type: 'image_url',
+              image_url: { url: imageBase64 },
             },
           ],
         },
       ],
-    }),
+      temperature: 0.7,
+      max_tokens: 1000,
+    };
+
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${normalizedApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`API 请求失败: ${response.status} ${errorData}`);
+    }
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+
+    if (!content) {
+      throw new Error('接口返回成功，但没有生成文案内容。');
+    }
+
+    return parseContent(content);
+  } catch (error) {
+    console.error('豆包接口调用异常:', error);
+    throw error;
+  }
+}
+
+export async function generateMomentsWithDoubao({ form, imageDataUrl }) {
+  const result = await generateMomentsContent({
+    apiKey: form.apiKey,
+    imageBase64: imageDataUrl,
+    formData: form,
   });
 
-  if (!response.ok) {
-    throw new Error(await readErrorMessage(response));
-  }
+  return {
+    status: result.isMock ? 'mock' : 'live',
+    title: result.title || '生活瞬间',
+    body: result.text || '',
+    tags: normalizeTags(result.tags),
+    raw: result,
+  };
+}
 
-  const data = await response.json();
-  const content = data?.choices?.[0]?.message?.content;
+export function generateMomentsMock(data) {
+  const result = buildMockContent(data);
 
-  if (!content) {
-    throw new Error('接口返回成功，但没有生成文案内容。');
-  }
-
-  return parseMomentsText(content);
+  return {
+    status: 'mock',
+    title: result.title,
+    body: result.text,
+    tags: normalizeTags(result.tags),
+  };
 }
