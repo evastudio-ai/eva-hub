@@ -21,8 +21,13 @@ function normalizeCopyType(value) {
 }
 
 function normalizeContentFocus(value) {
-  const contentFocus = String(value || '讲衣服').trim();
-  return ['讲衣服', '讲搭配', '讲氛围', '讲感悟'].includes(contentFocus) ? contentFocus : '讲衣服';
+  const contentFocus = String(value || 'AI判断').trim();
+  return ['讲衣服', '讲搭配', '讲人物', '讲氛围', '讲生活', 'AI判断'].includes(contentFocus) ? contentFocus : 'AI判断';
+}
+
+function normalizeCopyLength(value) {
+  const copyLength = String(value || '标准').trim();
+  return ['一句话', '短文', '标准', '长文'].includes(copyLength) ? copyLength : '标准';
 }
 
 function normalizeApiKey(value) {
@@ -57,7 +62,7 @@ function normalizeTags(tags) {
  * @param {Object} formData
  * @returns {String}
  */
-function buildEVAPrompt(formData) {
+function buildEVAPrompt(formData, options = {}) {
   const infoList = [];
   if (formData.brand) infoList.push(`品牌：${formData.brand}`);
   if (formData.category) infoList.push(`品类：${formData.category}`);
@@ -82,19 +87,51 @@ function buildEVAPrompt(formData) {
   const normalizedStyle = normalizeCopyType(formData.style || formData.copyType);
   const targetStyle = styleGuides[normalizedStyle] || styleGuides['朋友圈日常'] || styleGuides['高级质感'];
   const contentFocus = normalizeContentFocus(formData.contentFocus);
+  const copyLength = normalizeCopyLength(formData.copyLength);
   const contentFocusGuides = {
     讲衣服:
-      '【讲衣服】：重点讲款式、版型、面料、颜色、设计亮点、适合人群、适合场景。可以适度讲商品信息，但不能直播叫卖。',
+      '【讲衣服】：重点讲款式、版型、剪裁、面料、颜色、设计亮点、适合人群、适合场景。可以适度讲商品信息，但不能写生活感，也不能直播叫卖。',
     讲搭配:
-      '【讲搭配】：重点讲整套 look 的搭配逻辑，包括上下装关系、鞋包配饰、风格平衡、适合场合。如果图片里能看到配饰，可以结合；不确定的信息不要乱猜。',
+      '【讲搭配】：重点讲整套 look 的搭配逻辑，包括上下装关系、鞋、包、配饰、颜色关系、风格平衡、场景搭配。如果图片里能看到配饰，可以结合；不确定的信息不要乱猜。',
+    讲人物:
+      '【讲人物】：重点描述人物状态、气质、情绪和生活方式。衣服只是辅助，用来衬托人的状态，不要做商品说明书。',
     讲氛围:
-      '【讲氛围】：重点讲场景、光线、天气、空间、情绪、松弛感和生活方式。不要详细介绍衣服，不要拆解版型材质，只把衣服作为画面和状态的一部分。',
-    讲感悟:
-      '【讲感悟】：重点讲主理人视角、女性状态、生活态度、审美判断、EVA 的品牌价值观。不要详细介绍衣服，不要拆解版型材质，只把衣服作为画面和状态的一部分。',
+      '【讲氛围】：重点描述环境、天气、光影、空间、情绪、松弛感和生活方式。不要详细介绍衣服，不要拆解版型材质，只把衣服作为画面和状态的一部分，甚至可以几乎不讲衣服。',
+    讲生活:
+      '【讲生活】：像老板分享生活。重点讲生活方式、日常片段、审美选择和人的状态。不要详细介绍衣服，不要拆解版型材质，只把衣服作为画面和状态的一部分。',
+    AI判断:
+      '【AI判断】：先判断这张图片最适合讲衣服、搭配、人物、氛围还是生活，再选择最自然的表达方向。不要平均用力，必须有清晰主线。',
+  };
+  const copyLengthGuides = {
+    一句话: '【一句话】：只输出一句有后劲的文案，适合高级留白。正文不要超过 35 个中文字。',
+    短文: '【短文】：约 80 字，适合快速发朋友圈，2 小段以内。',
+    标准: '【标准】：约 200 字，默认长度，表达完整但不啰嗦。',
+    长文: '【长文】：约 400 字，适合品牌表达，可以更完整地铺开生活方式、审美判断和场景。',
   };
 
-  const angles = ['今天的天气', '一个生活瞬间', '一句感悟', '买手心得', '城市生活', '光影', '穿搭体验', '客户故事', '店内日常'];
+  const angles = [
+    '今天的天气',
+    '一个生活瞬间',
+    '一句感悟',
+    '买手心得',
+    '城市生活',
+    '光影',
+    '穿搭体验',
+    '客户故事',
+    '店内日常',
+    '摄影视角',
+    '人物状态',
+  ];
   const randomAngle = angles[Math.floor(Math.random() * angles.length)];
+  const variationRule = options.variation
+    ? `
+【换一条要求】
+这次是重新生成。请换一个表达角度，不要重复上一版，不要只是替换几个词。
+请重新寻找新的切入点，例如天气、光影、生活、买手心得、城市、客户故事、店内日常、摄影视角或人物状态。
+上一版内容仅供避重复参考，不要照抄：
+${options.previousText || '无'}
+`
+    : '';
 
   return `
 你是 EVA STUDIO 主理人。
@@ -109,11 +146,13 @@ function buildEVAPrompt(formData) {
 
 商品及动态信息：${productInfo}
 本次随机切入视角：从【${randomAngle}】切入。
+${variationRule}
 
 【文案核心原则】
-不要介绍衣服本身，而是介绍“穿着这件衣服以后，这个人的状态”。
-让客户看到一种生活方式，而不是一件商品。
-例如：不要说“这件衬衫很好看”，而是写“有些衣服，不是为了让别人注意，而是让自己舒服一点”。
+必须优先服从“内容重心”。
+如果内容重心是“讲衣服”，就具体讲款式、剪裁、面料、颜色和适合场景，但保持克制，不要直播叫卖。
+如果内容重心不是“讲衣服”，不要把正文写成商品介绍，要让客户看到一种状态、一种生活方式或一种审美判断。
+例如：不要只说“这件衬衫很好看”，而是根据本次内容重心，写出它为什么适合此刻、这个人、这个场景。
 
 【品牌语言库】
 鼓励使用的词汇：舒服、松弛、自在、刚刚好、留白、生活、陪伴、光影、城市、慢下来、有分寸、日常、自然、质感、安静、平衡。
@@ -129,6 +168,9 @@ ${targetStyle}
 ${contentFocusGuides[contentFocus] || contentFocusGuides['讲衣服']}
 
 注意：“内容重心”决定这条朋友圈主要写什么；“文案类型”决定这条朋友圈怎么写。两者必须同时遵守。
+
+【本次文案长度】
+${copyLengthGuides[copyLength] || copyLengthGuides['标准']}
 
 【输出格式强制要求】
 必须且只能输出一段纯净的 JSON 格式数据。不要有任何多余的解释、代码块标记（如 \`\`\`json ）。保证 JSON.parse() 可直接解析。
@@ -170,12 +212,114 @@ function buildMockContent() {
   };
 }
 
+function parseImageInsights(content) {
+  try {
+    const parsedData = JSON.parse(content);
+    return {
+      brand: parsedData.brand || '',
+      category: parsedData.category || '',
+      color: parsedData.color || '',
+      material: parsedData.material || '',
+      style: parsedData.style || '',
+      person: parsedData.person || '',
+      scene: parsedData.scene || '',
+      mood: parsedData.mood || '',
+      stylingPoint: parsedData.stylingPoint || '',
+    };
+  } catch (error) {
+    return {
+      brand: '',
+      category: '',
+      color: '',
+      material: '',
+      style: '',
+      person: '',
+      scene: '',
+      mood: '',
+      stylingPoint: '',
+    };
+  }
+}
+
+export async function analyzeProductImage({ apiKey, imageBase64 }) {
+  const normalizedApiKey = normalizeApiKey(apiKey);
+  const trimmedModelId = MODEL_ID.trim();
+
+  if (!normalizedApiKey || normalizedApiKey === 'mock') {
+    return {};
+  }
+
+  if (!imageBase64) {
+    throw new Error('请先上传一张图片。');
+  }
+
+  assertHeaderSafe(normalizedApiKey);
+
+  const requestBody = {
+    model: trimmedModelId,
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'text',
+            text: `请识别这张图片中适合 EVA STUDIO 朋友圈创作的信息。
+只输出纯 JSON，不要解释，不要代码块。
+无法确定的信息用空字符串。
+结构：
+{
+  "brand": "",
+  "category": "",
+  "color": "",
+  "material": "",
+  "style": "",
+  "person": "",
+  "scene": "",
+  "mood": "",
+  "stylingPoint": ""
+}`,
+          },
+          {
+            type: 'image_url',
+            image_url: { url: imageBase64 },
+          },
+        ],
+      },
+    ],
+    temperature: 0.2,
+    max_tokens: 500,
+  };
+
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${normalizedApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(requestBody),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.text();
+    throw new Error(`图片识别失败: ${response.status} ${errorData}`);
+  }
+
+  const data = await response.json();
+  const content = data?.choices?.[0]?.message?.content;
+
+  if (!content) {
+    return {};
+  }
+
+  return parseImageInsights(content);
+}
+
 /**
  * Generate EVA moments content through Doubao Vision API.
  *
  * @param {Object} params
  */
-export async function generateMomentsContent({ apiKey, imageBase64, formData }) {
+export async function generateMomentsContent({ apiKey, imageBase64, formData, variation = false, previousText = '' }) {
   const normalizedApiKey = normalizeApiKey(apiKey);
   const trimmedModelId = MODEL_ID.trim();
 
@@ -206,7 +350,7 @@ export async function generateMomentsContent({ apiKey, imageBase64, formData }) 
           content: [
             {
               type: 'text',
-              text: buildEVAPrompt(formData),
+              text: buildEVAPrompt(formData, { variation, previousText }),
             },
             {
               type: 'image_url',
@@ -247,11 +391,13 @@ export async function generateMomentsContent({ apiKey, imageBase64, formData }) 
   }
 }
 
-export async function generateMomentsWithDoubao({ form, imageDataUrl }) {
+export async function generateMomentsWithDoubao({ form, imageDataUrl, variation = false, previousText = '' }) {
   const result = await generateMomentsContent({
     apiKey: form.apiKey,
     imageBase64: imageDataUrl,
     formData: form,
+    variation,
+    previousText,
   });
 
   return {

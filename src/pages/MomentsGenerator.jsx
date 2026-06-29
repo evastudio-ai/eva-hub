@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateMomentsMock, generateMomentsWithDoubao } from '../services/doubao.js';
+import { analyzeProductImage, generateMomentsMock, generateMomentsWithDoubao } from '../services/doubao.js';
 
 const initialForm = {
   brand: '',
@@ -11,7 +11,8 @@ const initialForm = {
   scene: '',
   activity: '',
   copyType: '朋友圈日常版',
-  contentFocus: '讲衣服',
+  contentFocus: 'AI判断',
+  copyLength: '标准',
   apiKey: '',
 };
 
@@ -26,7 +27,8 @@ const copyTypes = [
   '小红书种草版',
 ];
 
-const contentFocusOptions = ['讲衣服', '讲搭配', '讲氛围', '讲感悟'];
+const contentFocusOptions = ['讲衣服', '讲搭配', '讲人物', '讲氛围', '讲生活', 'AI判断'];
+const copyLengthOptions = ['一句话', '短文', '标准', '长文'];
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -55,6 +57,8 @@ function MomentsGenerator() {
   const [imageDataUrl, setImageDataUrl] = useState('');
   const [isMockMode, setIsMockMode] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [imageInsights, setImageInsights] = useState(null);
   const [result, setResult] = useState(null);
   const [copyState, setCopyState] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
@@ -109,6 +113,17 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
     }
   };
 
+  const applyImageInsights = (insights) => {
+    setForm((current) => ({
+      ...current,
+      brand: current.brand || insights.brand || '',
+      category: current.category || insights.category || '',
+      color: current.color || insights.color || '',
+      material: current.material || insights.material || '',
+      scene: current.scene || insights.scene || '',
+    }));
+  };
+
   const handleFile = async (event) => {
     const image = event.target.files?.[0];
     if (!image) {
@@ -121,16 +136,32 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
 
     setPreview(URL.createObjectURL(image));
     setErrorMessage('');
+    setImageInsights(null);
 
     try {
-      setImageDataUrl(await fileToDataUrl(image));
+      const dataUrl = await fileToDataUrl(image);
+      setImageDataUrl(dataUrl);
+
+      if (!isMockMode && form.apiKey.trim()) {
+        setIsAnalyzing(true);
+
+        try {
+          const insights = await analyzeProductImage({ apiKey: form.apiKey, imageBase64: dataUrl });
+          setImageInsights(insights);
+          applyImageInsights(insights);
+        } catch (error) {
+          setErrorMessage(error.message || '图片识别失败，可继续手动填写更多设置。');
+        } finally {
+          setIsAnalyzing(false);
+        }
+      }
     } catch (error) {
       setImageDataUrl('');
       setErrorMessage(error.message);
     }
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async ({ variation = false, keepCurrentResult = false } = {}) => {
     setCopyState('');
     setErrorMessage('');
     setIsGenerating(true);
@@ -138,10 +169,18 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
     try {
       const nextResult = isMockMode
         ? generateMomentsMock(form)
-        : await generateMomentsWithDoubao({ form, imageDataUrl });
+        : await generateMomentsWithDoubao({
+            form,
+            imageDataUrl,
+            variation,
+            previousText: resultText,
+          });
       setResult(nextResult);
     } catch (error) {
-      setResult(null);
+      if (!keepCurrentResult) {
+        setResult(null);
+      }
+
       setErrorMessage(error.message || '生成失败，请检查 API Key 和网络连接。');
     } finally {
       setIsGenerating(false);
@@ -186,6 +225,25 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
     fallbackCopy(resultText);
   };
 
+  const handleCopyBody = async () => {
+    if (!result?.body) {
+      return;
+    }
+
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(result.body);
+        setCopyState('正文已复制');
+        return;
+      } catch (error) {
+        fallbackCopy(result.body);
+        return;
+      }
+    }
+
+    fallbackCopy(result.body);
+  };
+
   return (
     <main className="page generator-page">
       <header className="generator-header">
@@ -203,18 +261,6 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
 
       <section className="generator-layout">
         <form className="generator-form" onSubmit={(event) => event.preventDefault()}>
-          <label className="mode-switch">
-            <input
-              checked={isMockMode}
-              type="checkbox"
-              onChange={(event) => {
-                setIsMockMode(event.target.checked);
-                setErrorMessage('');
-              }}
-            />
-            <span>Mock 模式</span>
-          </label>
-
           <label className="file-upload">
             <span>上传图片</span>
             <input accept="image/*" type="file" onChange={handleFile} />
@@ -228,43 +274,17 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
             <div className="preview-empty">图片预览</div>
           )}
 
-          <div className="field-grid">
-            <label>
-              品牌
-              <input value={form.brand} onChange={(event) => updateField('brand', event.target.value)} />
-            </label>
-            <label>
-              品类
-              <input value={form.category} onChange={(event) => updateField('category', event.target.value)} />
-            </label>
-            <label>
-              颜色
-              <input value={form.color} onChange={(event) => updateField('color', event.target.value)} />
-            </label>
-            <label>
-              材质
-              <input value={form.material} onChange={(event) => updateField('material', event.target.value)} />
-            </label>
-            <label>
-              价格
-              <input value={form.price} onChange={(event) => updateField('price', event.target.value)} />
-            </label>
-            <label>
-              适合场景
-              <input value={form.scene} onChange={(event) => updateField('scene', event.target.value)} />
-            </label>
-          </div>
+          {isAnalyzing && <p className="copy-state">正在识别图片...</p>}
 
-          <label>
-            活动信息
-            <textarea
-              rows="3"
-              value={form.activity}
-              onChange={(event) => updateField('activity', event.target.value)}
-            />
-          </label>
-
-          <div className="field-grid">
+          <div className="field-grid primary-options">
+            <label>
+              内容重点
+              <select value={form.contentFocus} onChange={(event) => updateField('contentFocus', event.target.value)}>
+                {contentFocusOptions.map((contentFocus) => (
+                  <option key={contentFocus}>{contentFocus}</option>
+                ))}
+              </select>
+            </label>
             <label>
               文案类型
               <select value={form.copyType} onChange={(event) => updateField('copyType', event.target.value)}>
@@ -274,13 +294,65 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
               </select>
             </label>
             <label>
-              内容重心
-              <select value={form.contentFocus} onChange={(event) => updateField('contentFocus', event.target.value)}>
-                {contentFocusOptions.map((contentFocus) => (
-                  <option key={contentFocus}>{contentFocus}</option>
+              文案长度
+              <select value={form.copyLength} onChange={(event) => updateField('copyLength', event.target.value)}>
+                {copyLengthOptions.map((copyLength) => (
+                  <option key={copyLength}>{copyLength}</option>
                 ))}
               </select>
             </label>
+          </div>
+
+          <details className="advanced-panel">
+            <summary>更多设置 / 修改识别结果</summary>
+
+            {imageInsights && (
+              <div className="insight-box">
+                <span>AI 识别结果</span>
+                <p>
+                  {[imageInsights.category, imageInsights.color, imageInsights.style, imageInsights.scene, imageInsights.mood]
+                    .filter(Boolean)
+                    .join(' / ') || '已完成基础识别，可继续修改。'}
+                </p>
+              </div>
+            )}
+
+            <div className="field-grid">
+              <label>
+                品牌
+                <input value={form.brand} onChange={(event) => updateField('brand', event.target.value)} />
+              </label>
+              <label>
+                品类
+                <input value={form.category} onChange={(event) => updateField('category', event.target.value)} />
+              </label>
+              <label>
+                颜色
+                <input value={form.color} onChange={(event) => updateField('color', event.target.value)} />
+              </label>
+              <label>
+                材质
+                <input value={form.material} onChange={(event) => updateField('material', event.target.value)} />
+              </label>
+              <label>
+                价格
+                <input value={form.price} onChange={(event) => updateField('price', event.target.value)} />
+              </label>
+              <label>
+                适合场景
+                <input value={form.scene} onChange={(event) => updateField('scene', event.target.value)} />
+              </label>
+            </div>
+
+            <label>
+              活动信息
+              <textarea
+                rows="3"
+                value={form.activity}
+                onChange={(event) => updateField('activity', event.target.value)}
+              />
+            </label>
+
             <label>
               豆包 API Key
               <input
@@ -289,7 +361,19 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
                 onChange={(event) => updateField('apiKey', event.target.value)}
               />
             </label>
-          </div>
+
+            <label className="mode-switch">
+              <input
+                checked={isMockMode}
+                type="checkbox"
+                onChange={(event) => {
+                  setIsMockMode(event.target.checked);
+                  setErrorMessage('');
+                }}
+              />
+              <span>Mock 模式</span>
+            </label>
+          </details>
 
           {form.apiKey && (
             <button className="ghost-button" type="button" onClick={handleClearApiKey}>
@@ -323,9 +407,22 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
                 ))}
               </div>
 
-              <button className="secondary-button" type="button" onClick={handleCopy}>
-                一键复制
-              </button>
+              <div className="result-actions">
+                <button className="secondary-button" type="button" onClick={handleCopyBody}>
+                  复制正文
+                </button>
+                <button className="secondary-button" type="button" onClick={handleCopy}>
+                  复制全部
+                </button>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  onClick={() => handleGenerate({ variation: true, keepCurrentResult: true })}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? '生成中...' : '换一条'}
+                </button>
+              </div>
               {copyState && <p className="copy-state">{copyState}</p>}
             </>
           ) : (

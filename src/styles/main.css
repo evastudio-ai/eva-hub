@@ -263,6 +263,62 @@ textarea:focus {
   gap: 14px;
 }
 
+.primary-options {
+  grid-template-columns: 1fr;
+}
+
+.advanced-panel {
+  border: 1px solid rgba(31, 31, 36, 0.12);
+  border-radius: 8px;
+  background: #fbfaf8;
+  overflow: hidden;
+}
+
+.advanced-panel summary {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  padding: 0 14px;
+  color: #3a373d;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.advanced-panel[open] {
+  padding-bottom: 16px;
+}
+
+.advanced-panel > .field-grid,
+.advanced-panel > label,
+.advanced-panel > .mode-switch,
+.advanced-panel > .insight-box {
+  margin: 0 14px 14px;
+}
+
+.advanced-panel > .field-grid {
+  margin-top: 4px;
+}
+
+.insight-box {
+  padding: 12px;
+  border: 1px solid rgba(47, 95, 87, 0.14);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.insight-box span {
+  color: #7d525f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.insight-box p {
+  margin: 6px 0 0;
+  color: #5a565c;
+  line-height: 1.6;
+}
+
 .primary-button,
 .secondary-button {
   min-height: 48px;
@@ -283,6 +339,17 @@ textarea:focus {
   width: 100%;
   margin-top: 20px;
   background: #7d525f;
+}
+
+.result-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.result-actions .secondary-button {
+  margin-top: 0;
 }
 
 .error-message {
@@ -382,5 +449,9 @@ textarea:focus {
 
   .result-panel {
     position: static;
+  }
+
+  .result-actions {
+    grid-template-columns: 1fr;
   }
 }
