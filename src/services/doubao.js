@@ -128,8 +128,25 @@ async function readErrorMessage(response) {
   }
 }
 
+function normalizeApiKey(value) {
+  return String(value || '')
+    .trim()
+    .replace(/^Bearer\s+/i, '')
+    .trim();
+}
+
+function assertHeaderSafe(value) {
+  if (/[\u0100-\uFFFF]/.test(value)) {
+    throw new Error('API Key 包含中文或全角字符，请只粘贴火山方舟 API Key，不要包含中文说明、中文引号或其它文字。');
+  }
+
+  if (/[\r\n]/.test(value)) {
+    throw new Error('API Key 包含换行符，请只粘贴单行 API Key。');
+  }
+}
+
 export async function generateMomentsWithDoubao({ form, imageDataUrl }) {
-  const apiKey = form.apiKey?.trim();
+  const apiKey = normalizeApiKey(form.apiKey);
   const modelId = form.modelId?.trim();
 
   if (!apiKey) {
@@ -143,6 +160,8 @@ export async function generateMomentsWithDoubao({ form, imageDataUrl }) {
   if (!imageDataUrl) {
     throw new Error('请先上传一张图片。');
   }
+
+  assertHeaderSafe(apiKey);
 
   const response = await fetch('https://ark.cn-beijing.volces.com/api/v3/chat/completions', {
     method: 'POST',
