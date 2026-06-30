@@ -282,7 +282,9 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
               内容重点
               <select value={form.contentFocus} onChange={(event) => updateField('contentFocus', event.target.value)}>
                 {contentFocusOptions.map((contentFocus) => (
-                  <option key={contentFocus}>{contentFocus}</option>
+                  <option key={contentFocus} value={contentFocus}>
+                    {contentFocus === 'AI判断' ? '自动判断' : contentFocus}
+                  </option>
                 ))}
               </select>
             </label>
