@@ -11,6 +11,7 @@ const initialForm = {
   scene: '',
   activity: '',
   realDetail: '',
+  publishPlatform: '朋友圈',
   copyType: '朋友圈日常版',
   contentFocus: 'AI判断',
   contentIntent: '自动判断',
@@ -31,6 +32,7 @@ const copyTypes = [
 
 const contentFocusOptions = ['讲衣服', '讲搭配', '讲人物', '讲氛围', '讲生活', 'AI判断'];
 const copyLengthOptions = ['一句话', '短文', '标准', '长文'];
+const publishPlatformOptions = ['朋友圈', '小红书', '抖音'];
 const contentIntentOptions = [
   '自动判断',
   '日常分享',
@@ -350,6 +352,16 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
           {isAnalyzing && <p className="copy-state">正在识别图片...</p>}
 
           <div className="field-grid primary-options">
+            <label>
+              发布到哪里？
+              <select value={form.publishPlatform} onChange={(event) => updateField('publishPlatform', event.target.value)}>
+                {publishPlatformOptions.map((platform) => (
+                  <option key={platform} value={platform}>
+                    {platform}
+                  </option>
+                ))}
+              </select>
+            </label>
             <label>
               内容重点
               <select value={form.contentFocus} onChange={(event) => updateField('contentFocus', event.target.value)}>

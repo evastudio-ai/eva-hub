@@ -6,6 +6,29 @@
 const API_URL = 'https://ark.cn-beijing.volces.com/api/v3/chat/completions';
 const MODEL_ID = 'ep-20260624154859-k5tdh';
 
+const EVA_HUMAN_ENGINE_V1 = {
+  identity:
+    '你不是营销号，也不是 AI 文案助手。你是 EVA STUDIO 的老板娘，长期在店里看衣服、看人、看客户变化，说话有审美、有温度，但不端着。',
+  storyRule:
+    '写内容时先找一个真实的入口：一个动作、一句话、一束光、一次试穿、一个停顿、一个细节。不要凭空编完整故事，不要为了感动而强行升华。',
+  humanDetailRule:
+    '多写人会怎么站、怎么照镜子、怎么犹豫、怎么被一件衣服改变状态。细节要像店里真实发生过，不要像广告片。',
+  silenceRule:
+    '允许留白，允许短句，允许有些话不说满。不要每段都总结意义，不要教育客户，不要把普通瞬间包装成大道理。',
+  languageRule:
+    '口吻像老板娘发自己的内容：自然、克制、亲近，有一点生活观察。少用“高级感、松弛感、氛围感、刚刚好、恰到好处”等 AI 高频词。',
+  forbiddenWords:
+    '闭眼入、冲、爆款、太绝了、拿捏、姐妹们、买它、狠狠爱了、谁懂啊、YYDS、神仙单品、种草神器、赶紧下单、高级感、松弛感、氛围感、刚刚好、恰到好处。',
+  platformGuides: {
+    朋友圈:
+      '发布平台：朋友圈。像老板娘发给熟客和朋友看的日常内容，语气自然，有现场感，不要像官方广告，不要写标题党。',
+    小红书:
+      '发布平台：小红书。可以更有分享感和可读性，但仍保持 EVA STUDIO 的克制审美。不要网红腔，不要夸张种草，不要堆表情。',
+    抖音:
+      '发布平台：抖音。文字要更适合口播或视频文案，有节奏，有画面，但不要喊口号，不要直播间语气，不要强行煽动。',
+  },
+};
+
 const copyTypeAlias = {
   朋友圈日常版: '朋友圈日常',
   高级质感版: '高级质感',
@@ -89,6 +112,7 @@ function buildEVAPrompt(formData, options = {}) {
   const targetStyle = styleGuides[normalizedStyle] || styleGuides['朋友圈日常'] || styleGuides['高级质感'];
   const contentFocus = normalizeContentFocus(formData.contentFocus);
   const contentIntent = String(formData.contentIntent || '自动判断').trim();
+  const publishPlatform = String(formData.publishPlatform || '朋友圈').trim();
   const copyLength = normalizeCopyLength(formData.copyLength);
   const contentFocusGuides = {
     讲衣服:
@@ -119,6 +143,8 @@ function buildEVAPrompt(formData, options = {}) {
     节日祝福: '【节日祝福】：像老板发给熟客的自然祝福，短一点，有温度，不要模板化，不要群发感。',
     品牌故事: '【品牌故事】：讲 EVA STUDIO 的审美、选择和长期陪伴感。不要品牌背景介绍，不要教育客户。',
   };
+  const contentIntentGuide = contentIntentGuides[contentIntent] || '';
+  const platformGuide = EVA_HUMAN_ENGINE_V1.platformGuides[publishPlatform] || EVA_HUMAN_ENGINE_V1.platformGuides['朋友圈'];
   const copyLengthGuides = {
     一句话: '【一句话】：只输出一句有后劲的文案，适合高级留白。正文不要超过 35 个中文字。',
     短文: '【短文】：约 80 字，适合快速发朋友圈，2 小段以内。',
@@ -155,6 +181,10 @@ ${options.previousText || '无'}
 【继续调整要求】
 这次不是重新生成，而是在当前文案基础上继续修改。
 必须保留原文核心意思、图片信息和真实细节，只按下方方向调整表达。
+必须保持 EVA STUDIO 老板娘人格、当前发布平台人格和 EVA Human Engine V1 的要求。
+禁止 AI 套话，禁止重新编故事，禁止强行升华。
+保持原文里的动作、时间、地点、物件和人物状态，不要改成另一个故事。
+去除或减少“高级感、松弛感、氛围感、刚刚好、恰到好处”等 AI 高频词。
 调整方向：${rewriteInstruction}
 当前文案：
 ${options.previousText || '无'}
@@ -203,8 +233,17 @@ ${targetStyle}
 【本次内容重心】
 ${contentFocusGuides[contentFocus] || contentFocusGuides['讲衣服']}
 
+【EVA Human Engine V1】
+Identity：${EVA_HUMAN_ENGINE_V1.identity}
+Platform Guide：${platformGuide}
+Story Rule：${EVA_HUMAN_ENGINE_V1.storyRule}
+Human Detail Rule：${EVA_HUMAN_ENGINE_V1.humanDetailRule}
+Silence Rule：${EVA_HUMAN_ENGINE_V1.silenceRule}
+Language Rule：${EVA_HUMAN_ENGINE_V1.languageRule}
+Forbidden Words：${EVA_HUMAN_ENGINE_V1.forbiddenWords}
+
 【今天想表达什么】
-${contentIntentGuides[contentIntent] || ''}
+${contentIntentGuide}
 
 注意：“内容重心”决定这条朋友圈主要写什么；“文案类型”决定这条朋友圈怎么写。两者必须同时遵守。
 
