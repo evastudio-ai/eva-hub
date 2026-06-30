@@ -13,6 +13,7 @@ const initialForm = {
   realDetail: '',
   copyType: '朋友圈日常版',
   contentFocus: 'AI判断',
+  contentIntent: '自动判断',
   copyLength: '标准',
   apiKey: '',
 };
@@ -30,6 +31,21 @@ const copyTypes = [
 
 const contentFocusOptions = ['讲衣服', '讲搭配', '讲人物', '讲氛围', '讲生活', 'AI判断'];
 const copyLengthOptions = ['一句话', '短文', '标准', '长文'];
+const contentIntentOptions = [
+  '自动判断',
+  '日常分享',
+  '老板日常',
+  '员工记录',
+  '客户故事',
+  '商品推荐',
+  '穿搭分享',
+  '新品推荐',
+  '成交晒单',
+  '今日心情',
+  '治愈分享',
+  '节日祝福',
+  '品牌故事',
+];
 const adjustmentOptions = [
   '更简短一点',
   '更生活一点',
@@ -341,6 +357,14 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
                   <option key={contentFocus} value={contentFocus}>
                     {contentFocus === 'AI判断' ? '自动判断' : contentFocus}
                   </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              今天想表达什么
+              <select value={form.contentIntent} onChange={(event) => updateField('contentIntent', event.target.value)}>
+                {contentIntentOptions.map((contentIntent) => (
+                  <option key={contentIntent}>{contentIntent}</option>
                 ))}
               </select>
             </label>

@@ -88,6 +88,7 @@ function buildEVAPrompt(formData, options = {}) {
   const normalizedStyle = normalizeCopyType(formData.style || formData.copyType);
   const targetStyle = styleGuides[normalizedStyle] || styleGuides['朋友圈日常'] || styleGuides['高级质感'];
   const contentFocus = normalizeContentFocus(formData.contentFocus);
+  const contentIntent = String(formData.contentIntent || '自动判断').trim();
   const copyLength = normalizeCopyLength(formData.copyLength);
   const contentFocusGuides = {
     讲衣服:
@@ -102,6 +103,21 @@ function buildEVAPrompt(formData, options = {}) {
       '【讲生活】：像老板分享生活。重点讲生活方式、日常片段、审美选择和人的状态。不要详细介绍衣服，不要拆解版型材质，只把衣服作为画面和状态的一部分。',
     AI判断:
       '【AI判断】：先判断这张图片最适合讲衣服、搭配、人物、氛围还是生活，再选择最自然的表达方向。不要平均用力，必须有清晰主线。',
+  };
+  const contentIntentGuides = {
+    自动判断: '',
+    日常分享: '【日常分享】：像自然发朋友圈，记录今天看到的画面和感受。轻一点、真实一点，不要像广告。',
+    老板日常: '【老板日常】：用主理人视角分享店里的一天、一次观察或一个审美判断。语气亲近但有分寸，不要自夸。',
+    员工记录: '【员工记录】：像店员记录真实工作片段，重点写现场、试穿、整理、搭配和服务中的细节。不要生硬推销。',
+    客户故事: '【客户故事】：围绕客户状态和变化展开，保护隐私，不要夸张，不要编造未出现的信息。',
+    商品推荐: '【商品推荐】：强调穿着体验、人物状态和适合场景。不要写参数介绍，不要堆卖点。',
+    穿搭分享: '【穿搭分享】：重点讲搭配关系、颜色呼应、风格平衡和适合场合。建议自然，不要像教程。',
+    新品推荐: '【新品推荐】：以新到店的视角轻轻介绍，讲为什么值得看、适合谁、适合什么状态。不要制造紧迫感。',
+    成交晒单: '【成交晒单】：重点写客户变化和真实故事，不要炫耀成交，不要写业绩感，不要制造攀比。',
+    今日心情: '【今日心情】：从今天的情绪、天气、光影或店内瞬间切入。衣服可以轻轻带过，重点是当下感受。',
+    治愈分享: '【治愈分享】：真实、温柔、克制。不要营销，不要公众号腔，不要大道理，像一句安静的陪伴。',
+    节日祝福: '【节日祝福】：像老板发给熟客的自然祝福，短一点，有温度，不要模板化，不要群发感。',
+    品牌故事: '【品牌故事】：讲 EVA STUDIO 的审美、选择和长期陪伴感。不要品牌背景介绍，不要教育客户。',
   };
   const copyLengthGuides = {
     一句话: '【一句话】：只输出一句有后劲的文案，适合高级留白。正文不要超过 35 个中文字。',
@@ -186,6 +202,9 @@ ${targetStyle}
 
 【本次内容重心】
 ${contentFocusGuides[contentFocus] || contentFocusGuides['讲衣服']}
+
+【今天想表达什么】
+${contentIntentGuides[contentIntent] || ''}
 
 注意：“内容重心”决定这条朋友圈主要写什么；“文案类型”决定这条朋友圈怎么写。两者必须同时遵守。
 
