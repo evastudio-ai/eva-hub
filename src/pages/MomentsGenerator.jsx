@@ -10,6 +10,7 @@ const initialForm = {
   price: '',
   scene: '',
   activity: '',
+  realDetail: '',
   copyType: '朋友圈日常版',
   contentFocus: 'AI判断',
   copyLength: '标准',
@@ -302,6 +303,16 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
               </select>
             </label>
           </div>
+
+          <label>
+            今天想说的一句话 / 真实画面与细节
+            <textarea
+              rows="3"
+              placeholder="比如：今天有位姐姐试穿后，在镜子前看了很久，说自己好像很久没这样打扮过了。"
+              value={form.realDetail}
+              onChange={(event) => updateField('realDetail', event.target.value)}
+            />
+          </label>
 
           <details className="advanced-panel">
             <summary>更多设置 / 修改识别结果</summary>

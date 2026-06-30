@@ -73,6 +73,7 @@ function buildEVAPrompt(formData, options = {}) {
   if (formData.activity) infoList.push(`当前动态/活动：${formData.activity}`);
 
   const productInfo = infoList.length > 0 ? infoList.join(' | ') : '暂无特定补充信息。';
+  const realDetail = String(formData.realDetail || '').trim();
 
   const styleGuides = {
     朋友圈日常: '【朋友圈日常版】：像老板分享生活。真实、自然、不推销。字里行间流露着松弛感。',
@@ -145,6 +146,13 @@ ${options.previousText || '无'}
 注意：请在后台静默完成第一步，不要输出任何分析过程，只输出最终要求的 JSON。
 
 商品及动态信息：${productInfo}
+【真实画面与细节】
+${realDetail || '（未填写，请结合图片寻找真实瞬间进行表达）'}
+
+写作要求：
+如果存在真实细节，必须优先围绕真实细节展开。不要忽略。
+不要只介绍衣服。真实细节优先级高于商品介绍。
+
 本次随机切入视角：从【${randomAngle}】切入。
 ${variationRule}
 
