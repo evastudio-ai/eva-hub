@@ -30,6 +30,19 @@ const copyTypes = [
 
 const contentFocusOptions = ['讲衣服', '讲搭配', '讲人物', '讲氛围', '讲生活', 'AI判断'];
 const copyLengthOptions = ['一句话', '短文', '标准', '长文'];
+const adjustmentOptions = [
+  '更简短一点',
+  '更生活一点',
+  '更接地气一点',
+  '更温柔一点',
+  '更治愈一点',
+  '更克制一点',
+  '更有故事感',
+  '更适合朋友圈',
+  '更适合小红书',
+  '更适合抖音',
+  '保留意思重新写',
+];
 
 function fileToDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -61,6 +74,8 @@ function MomentsGenerator() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [imageInsights, setImageInsights] = useState(null);
   const [result, setResult] = useState(null);
+  const [editedBody, setEditedBody] = useState('');
+  const [adjustment, setAdjustment] = useState(adjustmentOptions[0]);
   const [copyState, setCopyState] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -93,10 +108,10 @@ function MomentsGenerator() {
 
     return `${result.title}
 
-${result.body}
+${editedBody}
 
 ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
-  }, [result]);
+  }, [editedBody, result]);
 
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -151,7 +166,7 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
           setImageInsights(insights);
           applyImageInsights(insights);
         } catch (error) {
-          setErrorMessage(error.message || '图片识别失败，可继续手动填写更多设置。');
+          setErrorMessage(error.message || '图片识别失败，可继续手动填写高级设置。');
         } finally {
           setIsAnalyzing(false);
         }
@@ -169,20 +184,61 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
 
     try {
       const nextResult = isMockMode
-        ? generateMomentsMock(form)
+        ? generateMomentsMock(form, {
+            variation,
+            previousText: editedBody,
+          })
         : await generateMomentsWithDoubao({
             form,
             imageDataUrl,
             variation,
-            previousText: resultText,
+            previousText: editedBody || resultText,
           });
       setResult(nextResult);
+      setEditedBody(nextResult.body || '');
     } catch (error) {
       if (!keepCurrentResult) {
         setResult(null);
+        setEditedBody('');
       }
 
-      setErrorMessage(error.message || '生成失败，请检查 API Key 和网络连接。');
+      setErrorMessage(error.message || '生成失败，请检查系统授权码和网络连接。');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleApplyAdjustment = async () => {
+    if (!result || !editedBody.trim()) {
+      setErrorMessage('请先生成内容，再继续调整。');
+      return;
+    }
+
+    setCopyState('');
+    setErrorMessage('');
+    setIsGenerating(true);
+
+    try {
+      const nextResult = isMockMode
+        ? generateMomentsMock(form, {
+            rewriteInstruction: adjustment,
+            previousText: editedBody,
+          })
+        : await generateMomentsWithDoubao({
+            form,
+            imageDataUrl,
+            rewriteInstruction: adjustment,
+            previousText: editedBody,
+          });
+
+      setResult((current) => ({
+        ...nextResult,
+        title: nextResult.title || current?.title || '生活瞬间',
+        tags: nextResult.tags?.length ? nextResult.tags : current?.tags || [],
+      }));
+      setEditedBody(nextResult.body || editedBody);
+    } catch (error) {
+      setErrorMessage(error.message || '调整失败，请检查系统授权码和网络连接。');
     } finally {
       setIsGenerating(false);
     }
@@ -227,22 +283,22 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
   };
 
   const handleCopyBody = async () => {
-    if (!result?.body) {
+    if (!editedBody) {
       return;
     }
 
     if (navigator.clipboard?.writeText) {
       try {
-        await navigator.clipboard.writeText(result.body);
+        await navigator.clipboard.writeText(editedBody);
         setCopyState('正文已复制');
         return;
       } catch (error) {
-        fallbackCopy(result.body);
+        fallbackCopy(editedBody);
         return;
       }
     }
 
-    fallbackCopy(result.body);
+    fallbackCopy(editedBody);
   };
 
   return (
@@ -252,10 +308,10 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
           返回首页
         </button>
         <div>
-          <p className="eyebrow">Moments Generator</p>
-          <h1>AI朋友圈生成器</h1>
+          <p className="eyebrow">EVA Content Studio</p>
+          <h1>EVA 图文内容系统</h1>
           <p className="hero-copy">
-            {isMockMode ? '当前为 Mock 测试模式。' : '当前默认使用豆包视觉模型，会根据图片和文案类型生成。'}
+            {isMockMode ? '当前为测试模式。' : '上传图片，选择表达方式，生成可直接修改的内容。'}
           </p>
         </div>
       </header>
@@ -317,11 +373,11 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
           </label>
 
           <details className="advanced-panel">
-            <summary>更多设置 / 修改识别结果</summary>
+            <summary>高级设置 / 修改识别结果</summary>
 
             {imageInsights && (
               <div className="insight-box">
-                <span>AI 识别结果</span>
+                <span>图片识别结果</span>
                 <p>
                   {[imageInsights.category, imageInsights.color, imageInsights.style, imageInsights.scene, imageInsights.mood]
                     .filter(Boolean)
@@ -367,7 +423,7 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
             </label>
 
             <label>
-              豆包 API Key
+              系统授权码
               <input
                 type="password"
                 value={form.apiKey}
@@ -384,20 +440,20 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
                   setErrorMessage('');
                 }}
               />
-              <span>Mock 模式</span>
+              <span>测试模式</span>
             </label>
           </details>
 
           {form.apiKey && (
             <button className="ghost-button" type="button" onClick={handleClearApiKey}>
-              清除 API Key
+              清除授权码
             </button>
           )}
 
           {errorMessage && <p className="error-message">{errorMessage}</p>}
 
           <button className="primary-button" type="button" onClick={handleGenerate} disabled={isGenerating}>
-            {isGenerating ? '生成中...' : '生成朋友圈文案'}
+            {isGenerating ? '正在整理内容...' : '生成内容'}
           </button>
         </form>
 
@@ -411,7 +467,12 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
 
               <div className="result-section">
                 <span>正文</span>
-                <p>{result.body}</p>
+                <textarea
+                  className="editable-result"
+                  rows="10"
+                  value={editedBody}
+                  onChange={(event) => setEditedBody(event.target.value)}
+                />
               </div>
 
               <div className="tag-row" aria-label="标签">
@@ -433,7 +494,21 @@ ${result.tags.map((tag) => `#${tag}`).join(' ')}`;
                   onClick={() => handleGenerate({ variation: true, keepCurrentResult: true })}
                   disabled={isGenerating}
                 >
-                  {isGenerating ? '生成中...' : '换一条'}
+                  {isGenerating ? '正在整理内容...' : '换一条'}
+                </button>
+              </div>
+
+              <div className="adjust-panel">
+                <label>
+                  继续调整
+                  <select value={adjustment} onChange={(event) => setAdjustment(event.target.value)}>
+                    {adjustmentOptions.map((option) => (
+                      <option key={option}>{option}</option>
+                    ))}
+                  </select>
+                </label>
+                <button className="secondary-button" type="button" onClick={handleApplyAdjustment} disabled={isGenerating}>
+                  {isGenerating ? '正在整理内容...' : '应用调整'}
                 </button>
               </div>
               {copyState && <p className="copy-state">{copyState}</p>}

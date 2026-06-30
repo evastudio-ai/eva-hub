@@ -39,11 +39,11 @@ function normalizeApiKey(value) {
 
 function assertHeaderSafe(value) {
   if (/[\u0100-\uFFFF]/.test(value)) {
-    throw new Error('API Key 包含中文或全角字符，请只粘贴火山方舟 API Key，不要包含中文说明、中文引号或其它文字。');
+    throw new Error('系统授权码包含中文或全角字符，请只粘贴完整授权码，不要包含中文说明、中文引号或其它文字。');
   }
 
   if (/[\r\n]/.test(value)) {
-    throw new Error('API Key 包含换行符，请只粘贴单行 API Key。');
+    throw new Error('系统授权码包含换行符，请只粘贴单行授权码。');
   }
 }
 
@@ -133,6 +133,17 @@ function buildEVAPrompt(formData, options = {}) {
 ${options.previousText || '无'}
 `
     : '';
+  const rewriteInstruction = String(options.rewriteInstruction || '').trim();
+  const rewriteRule = rewriteInstruction
+    ? `
+【继续调整要求】
+这次不是重新生成，而是在当前文案基础上继续修改。
+必须保留原文核心意思、图片信息和真实细节，只按下方方向调整表达。
+调整方向：${rewriteInstruction}
+当前文案：
+${options.previousText || '无'}
+`
+    : '';
 
   return `
 你是 EVA STUDIO 主理人。
@@ -155,6 +166,7 @@ ${realDetail || '（未填写，请结合图片寻找真实瞬间进行表达）
 
 本次随机切入视角：从【${randomAngle}】切入。
 ${variationRule}
+${rewriteRule}
 
 【文案核心原则】
 必须优先服从“内容重心”。
@@ -335,7 +347,14 @@ export async function analyzeProductImage({ apiKey, imageBase64 }) {
  *
  * @param {Object} params
  */
-export async function generateMomentsContent({ apiKey, imageBase64, formData, variation = false, previousText = '' }) {
+export async function generateMomentsContent({
+  apiKey,
+  imageBase64,
+  formData,
+  variation = false,
+  previousText = '',
+  rewriteInstruction = '',
+}) {
   const normalizedApiKey = normalizeApiKey(apiKey);
   const trimmedModelId = MODEL_ID.trim();
 
@@ -348,7 +367,7 @@ export async function generateMomentsContent({ apiKey, imageBase64, formData, va
   }
 
   if (!trimmedModelId) {
-    throw new Error('请输入 Model ID');
+    throw new Error('系统配置异常，请联系管理员。');
   }
 
   if (!imageBase64) {
@@ -366,7 +385,7 @@ export async function generateMomentsContent({ apiKey, imageBase64, formData, va
           content: [
             {
               type: 'text',
-              text: buildEVAPrompt(formData, { variation, previousText }),
+              text: buildEVAPrompt(formData, { variation, previousText, rewriteInstruction }),
             },
             {
               type: 'image_url',
@@ -390,7 +409,7 @@ export async function generateMomentsContent({ apiKey, imageBase64, formData, va
 
     if (!response.ok) {
       const errorData = await response.text();
-      throw new Error(`API 请求失败: ${response.status} ${errorData}`);
+      throw new Error(`内容生成失败: ${response.status} ${errorData}`);
     }
 
     const data = await response.json();
@@ -402,18 +421,25 @@ export async function generateMomentsContent({ apiKey, imageBase64, formData, va
 
     return parseContent(content);
   } catch (error) {
-    console.error('豆包接口调用异常:', error);
+    console.error('内容生成调用异常:', error);
     throw error;
   }
 }
 
-export async function generateMomentsWithDoubao({ form, imageDataUrl, variation = false, previousText = '' }) {
+export async function generateMomentsWithDoubao({
+  form,
+  imageDataUrl,
+  variation = false,
+  previousText = '',
+  rewriteInstruction = '',
+}) {
   const result = await generateMomentsContent({
     apiKey: form.apiKey,
     imageBase64: imageDataUrl,
     formData: form,
     variation,
     previousText,
+    rewriteInstruction,
   });
 
   return {
@@ -425,8 +451,19 @@ export async function generateMomentsWithDoubao({ form, imageDataUrl, variation 
   };
 }
 
-export function generateMomentsMock(data) {
+export function generateMomentsMock(data, options = {}) {
   const result = buildMockContent(data);
+  const rewriteInstruction = String(options.rewriteInstruction || '').trim();
+  const previousText = String(options.previousText || '').trim();
+
+  if (rewriteInstruction && previousText) {
+    return {
+      status: 'mock',
+      title: result.title,
+      body: `${previousText}\n\n（测试模式：已按「${rewriteInstruction}」调整）`,
+      tags: normalizeTags(result.tags),
+    };
+  }
 
   return {
     status: 'mock',

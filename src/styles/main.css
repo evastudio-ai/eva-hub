@@ -352,6 +352,18 @@ textarea:focus {
   margin-top: 0;
 }
 
+.adjust-panel {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(31, 31, 36, 0.12);
+}
+
+.adjust-panel .secondary-button {
+  margin-top: 0;
+}
+
 .error-message {
   margin: 0;
   padding: 12px 14px;
@@ -386,6 +398,13 @@ textarea:focus {
   margin: 8px 0 18px;
   white-space: pre-line;
   line-height: 1.8;
+}
+
+.editable-result {
+  min-height: 240px;
+  margin-top: 8px;
+  line-height: 1.8;
+  white-space: pre-line;
 }
 
 .tag-row {
